@@ -54,3 +54,21 @@ push 之后 GitHub 会自动跑一次测试（`.github/workflows/ci.yml`）：
 | `ImportError: SUMO_HOME` | 没设环境变量，或设置后没重开终端 |
 | 开了 GUI 但没窗口 | 环境里有 `LIBSUMO_AS_TRACI=1`，libsumo 不支持 GUI |
 | 状态好像没变化 | 观测已被归一化到 [0,1]，分箱阈值要用 `(0.1, 0.3, 0.6, 0.9)` |
+| 仿真"一闪而过" | `sumo-gui` 默认 `--delay 0`（最快速度），加 `--delay 50` 才有动画 |
+| 改了 `network.json` 没生效 | 生成文件要用 `python nets/single-intersection/build_network.py` 重新生成 |
+| 改了车道数后结果不可比 | `observation_space` 维度变了，**基线要重跑** |
+
+## 模块边界
+
+| 目录 / 文件 | 负责 |
+| --- | --- |
+| `nets/single-intersection/`（`network.json` + `build_network.py`） | 路网、需求、信号配时 |
+| `src/env/network_builder.py` | 路网生成逻辑 |
+| `src/env/sumo_env.py` | 环境封装（路径解析、参数过滤、接口兼容） |
+| `src/agents/` | 离散化、Q-learning、DQN |
+| `src/controllers/` | 固定时长、LQF 基线 |
+| `src/metrics.py`、`src/evaluate.py` | 指标与评估 |
+| `src/config.py`、`src/factory.py`、`tests/` | 公共基础设施 |
+
+> `nets/single-intersection/` 下除 `network.json`、`build_network.py`、`README.md`
+> 之外都是**生成产物**，不要手改（会被覆盖）。

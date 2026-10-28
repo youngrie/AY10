@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+    <vType id="car" length="5.0" minGap="2.5" maxSpeed="8.31" accel="2.6" decel="4.5" sigma="0.5"/>
+    <route id="n_right" edges="n_in w_out"/>
+    <route id="n_through" edges="n_in s_out"/>
+    <route id="n_left" edges="n_in e_out"/>
+    <route id="e_right" edges="e_in n_out"/>
+    <route id="e_through" edges="e_in w_out"/>
+    <route id="e_left" edges="e_in s_out"/>
+    <route id="s_right" edges="s_in e_out"/>
+    <route id="s_through" edges="s_in n_out"/>
+    <route id="s_left" edges="s_in w_out"/>
+    <route id="w_right" edges="w_in s_out"/>
+    <route id="w_through" edges="w_in e_out"/>
+    <route id="w_left" edges="w_in n_out"/>
+    <flow id="flow_n_right" route="n_right" begin="0" end="3600" period="exp(0.027778)" departLane="best" departSpeed="max"/>
+    <flow id="flow_n_through" route="n_through" begin="0" end="3600" period="exp(0.083333)" departLane="best" departSpeed="max"/>
+    <flow id="flow_n_left" route="n_left" begin="0" end="3600" period="exp(0.027778)" departLane="best" departSpeed="max"/>
+    <flow id="flow_e_right" route="e_right" begin="0" end="3600" period="exp(0.027778)" departLane="best" departSpeed="max"/>
+    <flow id="flow_e_through" route="e_through" begin="0" end="3600" period="exp(0.083333)" departLane="best" departSpeed="max"/>
+    <flow id="flow_e_left" route="e_left" begin="0" end="3600" period="exp(0.027778)" departLane="best" departSpeed="max"/>
+    <flow id="flow_s_right" route="s_right" begin="0" end="3600" period="exp(0.027778)" departLane="best" departSpeed="max"/>
+    <flow id="flow_s_through" route="s_through" begin="0" end="3600" period="exp(0.083333)" departLane="best" departSpeed="max"/>
+    <flow id="flow_s_left" route="s_left" begin="0" end="3600" period="exp(0.027778)" departLane="best" departSpeed="max"/>
+    <flow id="flow_w_right" route="w_right" begin="0" end="3600" period="exp(0.027778)" departLane="best" departSpeed="max"/>
+    <flow id="flow_w_through" route="w_through" begin="0" end="3600" period="exp(0.083333)" departLane="best" departSpeed="max"/>
+    <flow id="flow_w_left" route="w_left" begin="0" end="3600" period="exp(0.027778)" departLane="best" departSpeed="max"/>
+</routes>

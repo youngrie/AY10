@@ -1,0 +1,74 @@
+{
+  "_说明": "单路口路网生成配置。改完本文件后重新运行 build_network.py 即可，无需改代码。",
+  "_单位": "长度=米(m)；速度=m/s；时间=秒(s)；流量=辆/小时(veh/h)；角度未使用（东=+x，北=+y）。",
+
+  "geometry": {
+    "_说明": "arm_length 是路口中心到四个边界节点的距离；中心坐标一般不用改。",
+    "arm_length": 200.0,
+    "center": [0.0, 0.0]
+  },
+
+  "road": {
+    "_说明": "lane_movements 按『从驾驶员视角、由右到左』排列，长度即车道数。SUMO 里 lane 0 永远是最右侧车道。允许重复（如两条 through）。",
+    "_示例_1车道": ["through"],
+    "_示例_2车道": ["through", "left"],
+    "_示例_3车道": ["right", "through", "left"],
+    "_示例_4车道_双直行": ["right", "through", "through", "left"],
+    "_示例_4车道_双左转": ["right", "through", "left", "left"],
+    "lane_movements": ["right", "through", "through", "left"],
+    "lane_width": 5.6,
+    "speed_limit": 8.31
+  },
+
+  "turn_ratio": {
+    "_说明": "每个进口内部，左/直/右三种转向的车辆占比，三者之和必须为 1。",
+    "left": 0.2,
+    "through": 0.6,
+    "right": 0.2
+  },
+
+  "signal": {
+    "_说明": "四相位：NS直行 → NS左转 → EW直行 → EW左转，每个绿灯后自动插入黄灯；all_red>0 时再加一段全红。",
+    "_相位顺序": "南北直行(含右转) -> 黄灯 -> 南北左转 -> 黄灯 -> 东西直行(含右转) -> 黄灯 -> 东西左转 -> 黄灯",
+    "tls_id": "C",
+    "program_id": "0",
+    "green_through": 30,
+    "green_left": 12,
+    "yellow": 3,
+    "all_red": 0,
+    "right_turns_green_in_both": false
+  },
+
+  "demand": {
+    "_说明": "ratio 的顺序固定为 北(N)、东(E)、南(S)、西(W)，与 src/env/scenarios.py 的 DIRECTIONS 一致。",
+    "default_scenario": "S2",
+    "scenarios": {
+      "S1": {"_说明": "低流量、方向均衡", "total": 600, "ratio": [1, 1, 1, 1]},
+      "S2": {"_说明": "中流量、方向均衡", "total": 1200, "ratio": [1, 1, 1, 1]},
+      "S3": {"_说明": "高流量、方向均衡", "total": 2000, "ratio": [1, 1, 1, 1]},
+      "S4": {"_说明": "中流量、方向不均衡（北向占一半）", "total": 1200, "ratio": [3, 1, 1, 1]}
+    },
+    "_到达方式": "poisson = 泊松到达（车头时距服从指数分布）；uniform = 均匀到达",
+    "arrival": "poisson",
+    "simulation_seconds": 3600,
+    "vtype": {
+      "id": "car",
+      "length": 5.0,
+      "minGap": 2.5,
+      "maxSpeed": 8.31,
+      "accel": 2.6,
+      "decel": 4.5,
+      "sigma": 0.5
+    }
+  },
+
+  "output": {
+    "_说明": "dir 相对于本配置文件所在目录；文件名与 src/env/sumo_env.py 的约定保持一致。",
+    "dir": ".",
+    "net_file": "single-intersection.net.xml",
+    "default_route_file": "single-intersection.rou.xml",
+    "scenario_route_pattern": "{scenario}.rou.xml",
+    "sumocfg": "single-intersection.sumocfg",
+    "keep_intermediate": true
+  }
+}

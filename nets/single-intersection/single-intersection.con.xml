@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<connections>
+    <connection from="e_in" to="n_out" fromLane="0" toLane="0" dir="r"/>
+    <connection from="e_in" to="w_out" fromLane="1" toLane="1" dir="s"/>
+    <connection from="e_in" to="w_out" fromLane="2" toLane="2" dir="s"/>
+    <connection from="e_in" to="s_out" fromLane="3" toLane="3" dir="l"/>
+    <connection from="n_in" to="w_out" fromLane="0" toLane="0" dir="r"/>
+    <connection from="n_in" to="s_out" fromLane="1" toLane="1" dir="s"/>
+    <connection from="n_in" to="s_out" fromLane="2" toLane="2" dir="s"/>
+    <connection from="n_in" to="e_out" fromLane="3" toLane="3" dir="l"/>
+    <connection from="s_in" to="e_out" fromLane="0" toLane="0" dir="r"/>
+    <connection from="s_in" to="n_out" fromLane="1" toLane="1" dir="s"/>
+    <connection from="s_in" to="n_out" fromLane="2" toLane="2" dir="s"/>
+    <connection from="s_in" to="w_out" fromLane="3" toLane="3" dir="l"/>
+    <connection from="w_in" to="s_out" fromLane="0" toLane="0" dir="r"/>
+    <connection from="w_in" to="e_out" fromLane="1" toLane="1" dir="s"/>
+    <connection from="w_in" to="e_out" fromLane="2" toLane="2" dir="s"/>
+    <connection from="w_in" to="n_out" fromLane="3" toLane="3" dir="l"/>
+</connections>

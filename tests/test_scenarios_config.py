@@ -51,9 +51,27 @@ def test_summary_table_mentions_all_scenarios():
         assert name in table
 
 
-def test_build_route_file_is_not_implemented_yet():
-    with pytest.raises(NotImplementedError):
-        build_route_file("S1", "unused.rou.xml")
+def test_build_route_file_creates_valid_xml(tmp_path):
+    """场景需求生成应委托给 network_builder，产出合法且流量正确的 XML。"""
+    target = tmp_path / "S1.rou.xml"
+    path = build_route_file("S1", target)
+
+    assert path == target
+    assert target.is_file()
+
+    import xml.etree.ElementTree as ET
+
+    root = ET.parse(target).getroot()
+    flows = root.findall("flow")
+    routes = root.findall("route")
+    # 4 个进口 × 3 种转向
+    assert len(flows) == 12
+    assert len(routes) == 12
+    # 泊松到达：period="exp(λ)"，λ = 流量/3600
+    for flow in flows:
+        period = flow.get("period")
+        assert period is not None and period.startswith("exp(")
+
 
 
 # --------------------------------------------------------------------------- #

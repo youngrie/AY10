@@ -102,24 +102,31 @@ def summary_table() -> str:
 def build_route_file(name: str, out_path: str | Path) -> Path:
     """根据场景生成 SUMO 需求文件（``.rou.xml``，泊松到达）。
 
-    .. note::
-        **尚未实现**。需要完成：
-        1. 按 :func:`per_direction_demand` 计算各方向 ``vehsPerHour``；
-        2. 依据转向比例（左/直/右）把流量拆到三条车道上的 ``<flow>``；
-        3. 定义 ``vType``（车长、最大速度、跟驰模型）与 ``<route>``；
-        4. 写出 XML 并用 ``sumo`` 跑通校验。
+    实现委托给 :mod:`src.env.network_builder`，与
+    ``nets/single-intersection/build_network.py`` 使用**同一份配置**
+    （``nets/single-intersection/network.json``），避免两处各写一套流量逻辑。
+
+    流量拆分方式::
+
+        某进口总流量 = total × 该方向权重 / 权重之和
+        某转向流量   = 该进口总流量 × turn_ratio[转向]
+        泊松到达     = period="exp(λ)"，λ = 转向流量 / 3600（辆/秒）
 
     Args:
-        name: 场景名（如 ``"S1"``）。
+        name: 场景名（如 ``"S1"``，大小写不敏感）。
         out_path: 目标文件路径。
 
+    Returns:
+        实际写出的文件路径。
+
     Raises:
-        NotImplementedError: 该部分为待实现功能。
+        KeyError: 场景名不存在。
+        FileNotFoundError: 找不到路网配置文件。
     """
-    raise NotImplementedError(
-        "build_route_file 待实现：需要按场景生成泊松到达的 .rou.xml，"
-        "详见 nets/single-intersection/README.md 与 plan.md §3.2。"
-    )
+    from .network_builder import load_network_config, write_route_file
+
+    config = load_network_config()
+    return write_route_file(config, name, out_path)
 
 
 __all__ = [

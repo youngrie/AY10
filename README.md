@@ -21,13 +21,19 @@ AY10/
 ├── pytest.ini                      # pytest 配置（含 integration 标记）         ✅
 ├── CONTRIBUTING.md                 # 协作规范：分支 / 提交 / PR 流程             ✅
 ├── .gitignore                      # 排除虚拟环境 / 缓存 / 实验产物             ✅
-├── nets/                           # SUMO 路网、需求与信号配时                   🚧
+├── nets/                           # SUMO 路网（由脚本生成，勿手改）               ✅
 │   └── single-intersection/
-│       ├── README.md                     # 本目录说明与路网生成步骤              ✅
-│       ├── single-intersection.net.xml   # 路网：单路口，4 相位、每方向 3 车道    🚧
-│       ├── single-intersection.rou.xml   # 需求：各方向泊松到达 + 转向比例        🚧
-│       ├── tls.add.xml                   # 信号程序：4 绿灯相位 + 黄灯过渡        🚧
-│       └── single-intersection.sumocfg   # 仿真运行配置                          🚧
+│       ├── README.md                     # 路网说明与"如何改成自己的路网"        ✅
+│       ├── network.json                  # 唯一需要改的配置（几何/车道/相位/流量）✅
+│       ├── build_network.py              # 一键生成脚本                          ✅
+│       ├── single-intersection.nod.xml   # 节点（路口 + 4 个边界）               ✅
+│       ├── single-intersection.edg.xml   # 边（每方向一进一出，车道数由配置定）   ✅
+│       ├── single-intersection.con.xml   # 连接（车道 -> 转向出口）              ✅
+│       ├── single-intersection.tll.xml   # 信号配时（4 绿灯 + 4 黄灯）           ✅
+│       ├── single-intersection.net.xml   # 最终路网（运行时使用）                ✅
+│       ├── S1.rou.xml ~ S4.rou.xml       # 四场景需求（泊松到达）                ✅
+│       ├── single-intersection.rou.xml   # 默认场景需求副本                      ✅
+│       └── single-intersection.sumocfg   # 可直接 sumo-gui -c 打开               ✅
 ├── src/                            # 源代码                                   ✅
 │   ├── config.py                   #   配置加载（默认值 + JSON 覆盖）
 │   ├── factory.py                  #   控制器工厂（train/evaluate 共用）
@@ -150,7 +156,7 @@ python -m pytest                     # 运行 tests/ 中的全部单元测试
 平时只需要一条命令：
 
 ```bash
-python -m pytest        # 运行tests/中的所有测试文件，57 个用例
+python -m pytest        # 运行 tests/ 中的所有测试文件，87 个用例（不需要 SUMO）
 ```
 
 - 大家一起怎么干活（fork、提交、口头汇报）：见 `CONTRIBUTING.md`
@@ -178,8 +184,23 @@ python scripts/demo_fixed_time.py --duration 300 --delay 100
 python scripts/demo_fixed_time.py --no-gui        # 无窗口自检
 ```
 
-> 目前会回退到 SUMO-RL 内置路网（2 相位：`GGrr` 42s → 黄 2s → `rrGG` 42s → 黄 2s，周期 88s）。
-> `nets/single-intersection/` 还没有自定义路网，所以**不能**直接 `sumo-gui -c ...sumocfg`。
+> 现在用的是 `nets/single-intersection/` 下**自己生成的路网**：
+> 4 进口 × 4 车道（右/直/直/左）、4 相位（南北直行 → 南北左转 → 东西直行 → 东西左转）+ 黄灯，
+> 周期 96 s，`action_count = 4`、观测 37 维。
+> 若想换车道数/配时，改 `network.json` 后重跑
+> `python nets/single-intersection/build_network.py`。
+
+**换车流场景（S1–S4）**：`sumocfg` 里的 `route-files` 指向默认场景的副本。
+最省事的临时切换方式是命令行覆盖（不改文件）：
+
+```bash
+sumo-gui -c nets/single-intersection/single-intersection.sumocfg -r S3.rou.xml --delay 50
+```
+
+要改默认场景，就改 `network.json` 的 `demand.default_scenario` 后重新生成。
+> 注意：`build_network.py` 每次都会重写所有生成文件，**手改会被覆盖**。
+> 另：`src/train.py` / `src/evaluate.py` 目前**还不会按场景自动选 `.rou.xml`**
+> （见 `docs/tasks.md` 的"下一步"）。
 
 ---
 
