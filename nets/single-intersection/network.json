@@ -41,7 +41,7 @@
 
   "demand": {
     "_说明": "ratio 的顺序固定为 北(N)、东(E)、南(S)、西(W)，与 src/env/scenarios.py 的 DIRECTIONS 一致。",
-    "default_scenario": "S2",
+    "default_scenario": "S3",
     "scenarios": {
       "S1": {"_说明": "低流量、方向均衡", "total": 600, "ratio": [1, 1, 1, 1]},
       "S2": {"_说明": "中流量、方向均衡", "total": 1200, "ratio": [1, 1, 1, 1]},

@@ -4,10 +4,12 @@ from .scenarios import DIRECTIONS, SCENARIOS, get_scenario, list_scenarios, per_
 from .sumo_env import (
     DEFAULT_ENV_KWARGS,
     action_count,
+    available_scenarios,
     build_env,
     describe_env,
     resolve_net_files,
     reset_env,
+    scenario_route_name,
     step_env,
 )
 
@@ -19,9 +21,11 @@ __all__ = [
     "per_direction_demand",
     "DEFAULT_ENV_KWARGS",
     "action_count",
+    "available_scenarios",
     "build_env",
     "describe_env",
     "resolve_net_files",
     "reset_env",
+    "scenario_route_name",
     "step_env",
 ]

@@ -24,16 +24,17 @@ from src.agents.q_learning import TabularQLearning  # noqa: E402
 from src.config import env_kwargs, load_config, resolve_config_path  # noqa: E402
 from src.env import build_env, describe_env, reset_env, step_env  # noqa: E402
 from src.env.scenarios import summary_table  # noqa: E402
-from src.factory import build_controller  # noqa: E402
+from src.factory import CONTROLLER_NAMES, build_controller  # noqa: E402
 from src.metrics import find_episode_csv, load_and_summarize  # noqa: E402
 
 
 def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="训练交通信号控制智能体")
     parser.add_argument("--config", default=None, help="配置文件（JSON，如 sample.json）")
-    parser.add_argument("--controller", default=None,
-                        choices=["random", "fixed_time", "qlearning", "dqn"],
-                        help="控制器类型（默认取配置）")
+    parser.add_argument("--scenario", default=None,
+                        help="场景名（S1–S4），决定使用哪份 <SCENARIO>.rou.xml")
+    parser.add_argument("--controller", default=None, choices=list(CONTROLLER_NAMES),
+                        help="控制器类型（默认取配置）：" + " / ".join(CONTROLLER_NAMES))
     parser.add_argument("--episodes", type=int, default=None, help="训练回合数")
     parser.add_argument("--seed", type=int, default=None, help="随机种子")
     parser.add_argument("--reward", default=None, help="SUMO-RL 奖励函数名")
@@ -54,6 +55,8 @@ def build_config(args: argparse.Namespace) -> dict:
 
     if args.controller is not None:
         config["controller"] = args.controller
+    if args.scenario is not None:
+        config["scenario"] = args.scenario
     if args.episodes is not None:
         config["episodes"] = args.episodes
     if args.seed is not None:
@@ -84,8 +87,11 @@ def main(argv=None) -> int:
     print("[train] 场景一览：")
     print(summary_table())
 
-    env = build_env(**env_kwargs(config))
+    env = build_env(**env_kwargs(config, sumo_seed=int(config["seed"])))
     try:
+        print("\n[train] 运行配置：")
+        print(f"  场景        : {env.ay10_scenario or '默认需求（未指定场景）'}")
+        print(f"  需求文件    : {Path(env.ay10_route_file).name}")
         print("\n[train] 环境信息：")
         print(describe_env(env))
         if args.dry_run:

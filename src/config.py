@@ -43,7 +43,20 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "density_edges": [0.1, 0.3, 0.6, 0.9],
     },
     "fixed_time": {
+        # 等长配时用（每多少次决策轮转一次）；给了 durations 时忽略
         "switch_every": 6,
+        # 按相位的绿灯时长（秒）。null = 用 switch_every 等长配时。
+        # 4 相位顺序：NS直行 / NS左转 / EW直行 / EW左转
+        #
+        # 下面的取值是**校准结果**（scripts/calibrate_baselines.py 扫描得出）：
+        #   [15, 5, 15, 5] -> 周期 40 秒，直行 15s、左转 5s
+        # 在 S1–S4 上的平均等待 1.82~1.92s；原来的 30/30/30/30（周期 120s）约 11.9s。
+        # 注意左转不宜再短（试过 10/5 组合，重载场景下排队会爆炸到 800s+）。
+        "durations": [15, 5, 15, 5],
+    },
+    "queue_based": {
+        # 最小绿灯未满足时是否强制保持当前相位（True = 更接近真实信号机）
+        "hold_on_min_green": True,
     },
 }
 
@@ -93,9 +106,14 @@ def resolve_config_path(name: Union[str, Path]) -> Path:
 
 
 def env_kwargs(config: Mapping[str, Any], **overrides: Any) -> Dict[str, Any]:
-    """从配置中取出可直接传给 :func:`src.env.sumo_env.build_env` 的参数。"""
+    """从配置中取出可直接传给 :func:`src.env.sumo_env.build_env` 的参数。
+
+    注意 ``scenario`` 取自配置**顶层**（`"scenario": "S3"`），
+    它决定用哪份 ``<SCENARIO>.rou.xml``。
+    """
     kwargs: Dict[str, Any] = dict(config.get("env", {}))
     kwargs["reward_fn"] = config.get("reward_fn", "diff-waiting-time")
+    kwargs["scenario"] = config.get("scenario")
     kwargs.update(overrides)
     return {k: v for k, v in kwargs.items() if v is not None}
 

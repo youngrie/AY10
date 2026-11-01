@@ -51,7 +51,8 @@ METRIC_FIELDS = (
 _CSV_MEAN_WAIT = "system_mean_waiting_time"
 _CSV_STOPPED = "system_total_stopped"
 _CSV_ACC_WAIT = "t_accumulated_waiting_time"
-_CSV_AVG_SPEED = "t_average_speed"
+_CSV_AVG_SPEED = "system_mean_speed"
+_CSV_AVG_SPEED_FALLBACK = "t_average_speed"
 _CSV_STEP = "step"
 
 
@@ -77,7 +78,9 @@ def find_episode_csv(out_csv_name: Union[str, Path], episode: int = 0) -> Path:
             f"未找到 {base.parent / pattern}；"
             "请确认构建环境时设置了 out_csv_name 并已调用 save_csv()。"
         )
-    return matches[0]
+    # 取最新的一个：SUMO-RL 的文件名包含 TraCI 连接标签（conn0/conn1/...），
+    # 同一次实验可能产生多个文件，排序第一个不一定是最新那次。
+    return max(matches, key=lambda path: path.stat().st_mtime)
 
 
 def load_episode_csv(path: Union[str, Path]) -> pd.DataFrame:
@@ -99,7 +102,11 @@ def summarize_dataframe(df: pd.DataFrame) -> Dict[str, float]:
     waits = _series(df, _CSV_MEAN_WAIT)
     stopped = _series(df, _CSV_STOPPED)
     acc_wait = _series(df, _CSV_ACC_WAIT)
+    # system_mean_speed 是整个路网的平均车速，通常都有值；
+    # t_average_speed 在没有车辆时可能是 NaN，作为回落。
     speed = _series(df, _CSV_AVG_SPEED)
+    if speed is None:
+        speed = _series(df, _CSV_AVG_SPEED_FALLBACK)
     step = _series(df, _CSV_STEP)
 
     def _mean(s: Optional[pd.Series]) -> float:

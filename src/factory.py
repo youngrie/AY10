@@ -14,10 +14,11 @@ from .agents.base import BaseController
 from .agents.discretizer import Discretizer
 from .agents.q_learning import TabularQLearning
 from .controllers.fixed_time import FixedTimeController
+from .controllers.queue_based import QueueBasedController
 from .env.sumo_env import action_count
 
 #: 工厂支持的全部控制器名
-CONTROLLER_NAMES = ("random", "fixed_time", "qlearning", "dqn")
+CONTROLLER_NAMES = ("random", "fixed_time", "queue_based", "qlearning", "dqn")
 
 
 class RandomController(BaseController):
@@ -76,6 +77,25 @@ def build_controller(
         return FixedTimeController(
             n_actions,
             switch_every=int(_get(config, "fixed_time", "switch_every", 6)),
+            durations=_get(config, "fixed_time", "durations", None),
+            delta_time=float(_get(config, "env", "delta_time", 5)),
+        )
+
+    if name == "queue_based":
+        # LQF 需要知道"每个相位放行哪些车道"，这里从路网自动推导，
+        # 不需要手工填 phase_lanes。
+        from .env.phase_map import build_phase_lane_map, validate_phase_lane_map
+
+        mapping = build_phase_lane_map(env)
+        validate_phase_lane_map(mapping, n_actions)
+        print(f"[factory] {mapping.describe()}")
+        return QueueBasedController(
+            n_phases=n_actions,
+            n_lanes=mapping.n_lanes,
+            phase_lanes=mapping.phase_lanes,
+            hold_on_min_green=bool(
+                _get(config, "queue_based", "hold_on_min_green", True)
+            ),
         )
 
     if name == "qlearning":

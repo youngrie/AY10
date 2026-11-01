@@ -11,10 +11,10 @@
 ``results/eval_<scenario>.csv``，每个 (控制器, 种子, 回合) 一行，含
 ``avg_wait / avg_queue / max_queue / p95_wait / total_wait / mean_speed / duration``。
 
-.. warning::
-   场景差异依赖各场景专属的 ``.rou.xml``（:func:`src.env.scenarios.build_route_file`
-   尚未实现）。当前 S1–S4 共用同一份需求文件，结果只能验证流程，
-   不能用于比较不同交通条件（见 docs/tasks.md 中 A 的阶段一任务）。
+.. note::
+   每个场景使用各自的 ``nets/single-intersection/<场景>.rou.xml``
+   （由 ``build_env(scenario=...)`` 选择）。S1–S4 的车流强度不同，
+   因此同一控制器在不同场景下的指标不可直接横向比较，应在**同一场景内**比较控制器。
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ import argparse
 import csv
 import sys
 from pathlib import Path
+from typing import List
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -68,8 +69,30 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--episodes", type=int, default=1, help="每个组合重复回合数")
     parser.add_argument("--max-steps", type=int, default=100_000)
     parser.add_argument("--out-dir", default="results")
+    parser.add_argument("--keep-raw", action="store_true",
+                        help="保留每个回合的原始逐步 CSV（默认删除，只留汇总 eval_*.csv）")
     parser.add_argument("--dry-run", action="store_true", help="只打印评估矩阵")
     return parser.parse_args(argv)
+
+
+def merge_rows(path: Path, new_rows: List[dict], keys=("scenario", "controller", "seed", "episode")) -> List[dict]:
+    """把新结果合并进已有 CSV：相同 key 的行被替换，其余保留。
+
+    这样就能"一次只跑一个控制器"而不会冲掉之前的记录。
+    """
+    existing: List[dict] = []
+    if path.is_file():
+        with path.open(newline="", encoding="utf-8") as handle:
+            existing = list(csv.DictReader(handle))
+
+    new_keys = {tuple(str(row[k]) for k in keys) for row in new_rows}
+    kept = [
+        row for row in existing
+        if tuple(str(row.get(k, "")) for k in keys) not in new_keys
+    ]
+    merged = kept + [{k: str(v) for k, v in row.items()} for row in new_rows]
+    merged.sort(key=lambda row: tuple(str(row.get(k, "")) for k in keys))
+    return merged
 
 
 def main(argv=None) -> int:
@@ -82,8 +105,7 @@ def main(argv=None) -> int:
     print(f"  控制器  : {args.controllers}")
     print(f"  种子    : {args.seeds}")
     print(f"  每组合  : {args.episodes} 回合   合计 {combos} 次运行")
-    print("\n[警告] 场景专属需求文件尚未实现，S1–S4 共用同一份 .rou.xml，"
-          "结果仅用于验证流程。\n")
+    print()
     if args.dry_run:
         return 0
 
@@ -96,7 +118,16 @@ def main(argv=None) -> int:
             for seed in args.seeds:
                 for episode in range(1, args.episodes + 1):
                     csv_prefix = out_dir / f"{scenario}_{controller_name}_s{seed}_e{episode}"
-                    env = build_env(**env_kwargs(config, out_csv_name=str(csv_prefix)))
+                    # scenario 决定实际用哪份 <SCENARIO>.rou.xml；
+                    # sumo_seed 必须显式传，否则 SUMO 每次随机、结果不可复现
+                    env = build_env(
+                        **env_kwargs(
+                            config,
+                            out_csv_name=str(csv_prefix),
+                            scenario=scenario,
+                            sumo_seed=seed,
+                        )
+                    )
                     try:
                         controller = build_controller(controller_name, env, config, seed=seed)
                         total_reward, steps = run_episode(env, controller, args.max_steps)
@@ -114,7 +145,14 @@ def main(argv=None) -> int:
                         "steps": steps,
                     }
                     try:
-                        row.update(load_and_summarize(find_episode_csv(csv_prefix, 0)))
+                        raw_csv = find_episode_csv(csv_prefix, 0)
+                        row.update(load_and_summarize(raw_csv))
+                        # SUMO-RL 的原始 CSV 文件名带 TraCI 连接标签（conn0/conn1/...），
+                        # 每次评估都会新增一批、永不覆盖，很占地方。
+                        # 汇总指标已经写入 eval_<场景>.csv，因此默认删除原始文件。
+                        # 需要画时间序列时加 --keep-raw。
+                        if not args.keep_raw:
+                            raw_csv.unlink(missing_ok=True)
                     except Exception as exc:  # noqa: BLE001
                         print(f"[evaluate] {csv_prefix.name} 指标缺失: {type(exc).__name__}")
                         row.update({field: float("nan") for field in METRIC_FIELDS})
@@ -130,11 +168,12 @@ def main(argv=None) -> int:
         if not rows:
             continue
         path = out_dir / f"eval_{scenario}.csv"
+        merged = merge_rows(path, rows)
         with path.open("w", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+            writer = csv.DictWriter(handle, fieldnames=list(merged[0]))
             writer.writeheader()
-            writer.writerows(rows)
-        print(f"[evaluate] 已写出 {path}")
+            writer.writerows(merged)
+        print(f"[evaluate] 已写入 {path}（累计 {len(merged)} 行）")
 
     print("\n[evaluate] 跨种子汇总（均值 ± 标准差）：")
     for scenario in args.scenarios:

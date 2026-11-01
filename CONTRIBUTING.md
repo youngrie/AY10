@@ -32,7 +32,7 @@
 ```bash
 pip install -r requirements.txt
 python scripts/check_env.py       
-python scripts/demo_fixed_time.py  
+python scripts/demo_control.py --controller fixed_time  
 ```
 
 详细步骤见 `README.md` 的「环境配置」一节。
@@ -65,6 +65,7 @@ push 之后 GitHub 会自动跑一次测试（`.github/workflows/ci.yml`）：
 | `nets/single-intersection/`（`network.json` + `build_network.py`） | 路网、需求、信号配时 |
 | `src/env/network_builder.py` | 路网生成逻辑 |
 | `src/env/sumo_env.py` | 环境封装（路径解析、参数过滤、接口兼容） |
+| `src/env/phase_map.py` | 相位→车道映射（LQF 依赖） |
 | `src/agents/` | 离散化、Q-learning、DQN |
 | `src/controllers/` | 固定时长、LQF 基线 |
 | `src/metrics.py`、`src/evaluate.py` | 指标与评估 |

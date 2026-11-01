@@ -10,12 +10,12 @@ python nets/single-intersection/build_network.py          # 生成全部文件
 python nets/single-intersection/build_network.py --check  # 只校验配置
 ```
 
-生成过程（脚本内部会调用 SUMO 的 `netconvert`）：
+<!-- 生成过程（脚本内部会调用 SUMO 的 `netconvert`）：
 
 1. 写 `nod` / `edg` / `con` 三个描述文件；
 2. 先出一版路网，读回 `linkIndex`（信号状态字符串的顺序由它决定，不能写死）；
 3. 按配置拼出 4 个绿灯相位 + 黄灯，写 `tll` 文件；
-4. 带着配时再生成一次，得到内嵌信号配时的 `single-intersection.net.xml`。
+4. 带着配时再生成一次，得到内嵌信号配时的 `single-intersection.net.xml`。 -->
 
 ## 生成的文件
 
@@ -59,7 +59,7 @@ python nets/single-intersection/build_network.py --check  # 只校验配置
 每个绿灯后插入 3 s 黄灯。SUMO-RL 会把 4 个绿灯相位识别为 4 个动作
 （`action_count == 4`）。
 
-## 想改成自己的路网？
+## 想自定义路网？
 
 只改 `network.json`，不用动代码：
 
@@ -72,6 +72,7 @@ python nets/single-intersection/build_network.py --check  # 只校验配置
 | 绿灯/黄灯/全红时长 | `signal.*` |
 | 右转是否跟随左转也放行 | `signal.right_turns_green_in_both` |
 | 各场景流量 | `demand.scenarios.*.total` / `.ratio` |
+| 默认运行的车流场景 | `demand.default_scenario` |
 | 到达方式（泊松/均匀） | `demand.arrival` |
 | 车辆参数 | `demand.vtype` |
 
@@ -90,6 +91,15 @@ python nets/single-intersection/build_network.py --check  # 只校验配置
 > 只有 `observation_space` 的维度会随车道数变化。
 
 改完重新执行 `python nets/single-intersection/build_network.py` 即可。
+
+> **改完车道后建议跑一次自检**，确认"相位 → 车道"映射仍然正确
+> （LQF 等基于队列的控制器依赖它）：
+>
+> ```bash
+> python scripts/inspect_phase_map.py
+> ```
+>
+> 正常应看到每个动作放行的车道列表，且"是否覆盖全部 : True"。
 
 > ⚠️ **一个 SUMO 的坑**：`<flow period="exp(x)">` 里的 `x` 是**速率 λ（辆/秒）**，
 > 不是平均车头时距。平均 120 s 一辆 ⇒ 要写 `exp(0.00833)`，写成 `exp(120)`
@@ -128,7 +138,7 @@ Real time factor: 2398.4           ← 快放约 2400 倍
 | 完整 1 小时 | `sumo-gui -c single-intersection.sumocfg --duration 3600 --delay 10` | 约 36 s |
 
 > 也可在 GUI 右下角拖 **Delay** 滑块；`--no-gui` 时 delay 无意义（没有画面可播放）。
-> 更省事的是直接用 `python scripts/demo_fixed_time.py`（默认已是 GUI + 50ms）。
+> 更省事的是直接用 `python scripts/demo_control.py`（默认已是 GUI + 50ms）。
 
 ## 参考
 

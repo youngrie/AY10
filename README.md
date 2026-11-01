@@ -5,6 +5,7 @@
 **技术路线分两个阶段**：阶段一用**表格型 Q-learning** 跑通全流程并产出完整对比结果；阶段二在此基础上扩展 **DQN**，与表格法对照。
 
 图例：✅ 已存在　🚧 计划中（尚未创建）
+各子目录都附有一份 `README.md`，说明该目录的职责与用法。
 
 ```
 AY10/
@@ -16,7 +17,9 @@ AY10/
 │   └── proposal.pdf                #   编译产物
 ├── scripts/                        # 辅助脚本                                   ✅
 │   ├── check_env.py                #   环境自检（SUMO / 依赖 / 仿真试跑）
-│   └── demo_fixed_time.py          #   固定时长控制的 sumo-gui 动画演示
+│   ├── demo_control.py             #   看某个控制器（含固定配时/LQF）的动画
+│   ├── calibrate_baselines.py      #   基线校准（扫描固定时长配时）
+│   └── inspect_phase_map.py        #   查看"相位→车道"映射（改车道后自检）
 ├── requirements.txt                # Python 依赖清单（已固定版本）               ✅
 ├── pytest.ini                      # pytest 配置（含 integration 标记）         ✅
 ├── CONTRIBUTING.md                 # 协作规范：分支 / 提交 / PR 流程             ✅
@@ -39,7 +42,9 @@ AY10/
 │   ├── factory.py                  #   控制器工厂（train/evaluate 共用）
 │   ├── env/
 │   │   ├── sumo_env.py             #   封装 SumoEnvironment、场景与随机种子
-│   │   └── scenarios.py            #   场景 S1–S4（由易到难）
+│   │   ├── scenarios.py            #   场景 S1–S4（由易到难）
+│   │   ├── network_builder.py      #   配置化生成路网/需求/信号配时
+│   │   └── phase_map.py            #   相位→车道映射（LQF 依赖）
 │   ├── agents/
 │   │   ├── base.py                 #   控制器统一接口 select_action(obs)
 │   │   ├── discretizer.py          #   观测 → 离散状态（供表格法使用）
@@ -64,10 +69,12 @@ AY10/
 │   ├── test_env_compat.py          #   环境接口兼容层
 │   └── test_integration_sumo.py    #   集成测试（需 SUMO，默认跳过）
 ├── docs/                           # 文档                                       ✅
-│   └── tasks.md                    # 任务分工（阶段一 / 阶段二）                 ✅
+│   ├── tasks.md                    #   任务分工与进度
+│   ├── baselines.md                #   基线校准与测量结果（对照基准）
+│   └── INTERFACE.md                #   交接用接口文档（环境/控制器/指标/配置）
 ├── .github/                        # CI 配置                                    ✅
 │   └── workflows/ci.yml            # GitHub Actions：提交即跑测试               ✅
-├── results/                        # 实验输出 CSV（不入库）                     ✅
+├── results/                        # 实验输出（汇总 CSV，不入库）               ✅
 │   └── README.md                   #   目录用途说明
 └── report/                         # 图表与最终报告（内容待填）                 🚧
     └── README.md                   #   目录用途说明
@@ -144,19 +151,34 @@ pip install -r requirements.txt
 
 ```bash
 python scripts/check_env.py          # 检查 SUMO / 依赖 / 仿真是否正常
-python scripts/demo_fixed_time.py    # 打开 sumo-gui 看固定配时的交通动画
+python scripts/demo_control.py    # 打开 sumo-gui 看优先最长队列的交通动画
 python -m pytest                     # 运行 tests/ 中的全部单元测试
 ```
 
 
 若第二条报 `SUMO_HOME` 相关错误，请回到第 3 步检查环境变量，并确认已重开终端。
 
+## 5. 预期结果
+**例：平均等待时间（秒）**
+| 场景 | random | fixed_time | queue_based | Q-learning | DQN |
+|---|---|---|---|---|---|
+| S1 (600) | 6.80 | 12.10 | 0.84 | xxx | xxx |
+| S2 (1200) | 7.76 | 11.66 | 1.39 | xxx | xxx |
+| S3 (2000) | 9.45 | 11.99 | 1.82 | xxx | xxx |
+| S4 (1200 不均衡) | 7.75 | 11.93 | 1.35 | xxx | xxx |
+
+**评估指标**
+必需：平均等待时间、平均队列长度
+可选：最大队列长度、吞吐量、平均延误、RL相关（loss、奖励等）、相位切换次数
+
 ## 5. 开发与测试
 
+接口文档见`docs/INTERFACE.md`
 平时只需要一条命令：
 
 ```bash
-python -m pytest        # 运行 tests/ 中的所有测试文件，87 个用例（不需要 SUMO）
+python -m pytest -q                  # 必须全绿（当前 119 个）
+python -m compileall -q src scripts  # 语法检查
 ```
 
 - 大家一起怎么干活（fork、提交、口头汇报）：见 `CONTRIBUTING.md`
@@ -176,13 +198,19 @@ export LIBSUMO_AS_TRACI=1   # Linux / macOS
 
 建议：训练时开启，调参与演示时关闭。
 
-**动画演示（固定时长控制）**：
+**演示：看某个控制器（Fixed Time / LQF / Q-learning 等）的决策过程**
 
-```bash
-python scripts/demo_fixed_time.py                 # sumo-gui，600 仿真秒 ≈ 30 秒动画
-python scripts/demo_fixed_time.py --duration 300 --delay 100
-python scripts/demo_fixed_time.py --no-gui        # 无窗口自检
+```bashixed
+# 默认就是 LQF，600 仿真秒 ≈ 30 秒动画
+python scripts/demo_control.py
+
+python scripts/demo_control.py --controller queue_based --delay 100   # 慢一点
+python scripts/demo_control.py --controller fixed_time --duration 300
+python scripts/demo_control.py --controller qlearning --duration 300
 ```
+
+终端会打印每个决策步的**动作切换时刻**，可与窗口画面对照。
+`queue_based` 启动时还会打印"相位 → 车道"映射表。
 
 > 现在用的是 `nets/single-intersection/` 下**自己生成的路网**：
 > 4 进口 × 4 车道（右/直/直/左）、4 相位（南北直行 → 南北左转 → 东西直行 → 东西左转）+ 黄灯，
@@ -190,17 +218,27 @@ python scripts/demo_fixed_time.py --no-gui        # 无窗口自检
 > 若想换车道数/配时，改 `network.json` 后重跑
 > `python nets/single-intersection/build_network.py`。
 
-**换车流场景（S1–S4）**：`sumocfg` 里的 `route-files` 指向默认场景的副本。
-最省事的临时切换方式是命令行覆盖（不改文件）：
+**换车流场景（S1–S4）**
+
+三种方式都可以（效果相同，都是换 `.rou.xml`）：
 
 ```bash
+# 1) Python 实验：命令行直接指定场景（推荐）
+python src/train.py --scenario S1 --controller queue_based
+python src/evaluate.py --scenarios S1 S2 S3 S4 --controllers random fixed_time queue_based
+
+# 2) 看动画时指定场景
+python scripts/demo_control.py --scenario S4
+
+# 3) 直接用 sumo-gui 跑
 sumo-gui -c nets/single-intersection/single-intersection.sumocfg -r S3.rou.xml --delay 50
 ```
 
-要改默认场景，就改 `network.json` 的 `demand.default_scenario` 后重新生成。
-> 注意：`build_network.py` 每次都会重写所有生成文件，**手改会被覆盖**。
-> 另：`src/train.py` / `src/evaluate.py` 目前**还不会按场景自动选 `.rou.xml`**
-> （见 `docs/tasks.md` 的"下一步"）。
+配置文件中也可以写 `"scenario": "S2"`，命令行参数会覆盖它。
+不指定时使用默认需求文件（`demand.default_scenario` 的副本）。
+
+> 注意：`build_network.py` 每次都会重写所有生成文件，**手改会被覆盖**——
+> 要固化改动请改 `network.json` 后重新生成。
 
 ---
 

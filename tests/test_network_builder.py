@@ -264,3 +264,28 @@ def test_validate_rejects_bad_turn_ratio_sum(config):
     with pytest.raises(ValueError, match="之和"):
         nb.validate_config(cfg)
 
+
+# --------------------------------------------------------------------------- #
+# 命令行入口与工厂保持一致
+# --------------------------------------------------------------------------- #
+def test_train_cli_accepts_every_factory_controller():
+    """train.py 的 --controller 选项必须覆盖 factory 支持的全部控制器。
+
+    这条是为了防止"工厂加了新控制器、但命令行 choices 忘了同步"的问题
+    （之前 queue_based 就因此跑不起来）。
+    """
+    from src.factory import CONTROLLER_NAMES
+    from src.train import parse_args
+
+    for name in CONTROLLER_NAMES:
+        args = parse_args(["--controller", name])
+        assert args.controller == name
+
+
+def test_evaluate_cli_accepts_queue_based():
+    from src.evaluate import parse_args
+
+    args = parse_args(["--controllers", "queue_based", "--scenarios", "S1"])
+    assert args.controllers == ["queue_based"]
+
+

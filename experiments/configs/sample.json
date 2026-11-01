@@ -26,7 +26,11 @@
     "density_edges": [0.1, 0.3, 0.6, 0.9]
   },
   "fixed_time": {
-    "switch_every": 6
+    "switch_every": 6,
+    "durations": [15, 5, 15, 5]
+  },
+  "queue_based": {
+    "hold_on_min_green": true
   }
 }
 
